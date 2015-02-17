@@ -11,7 +11,7 @@ public class DBConnection {
     // Implement the DB Connection class as a singleton
     public static Connection getInstance() throws ClassNotFoundException, SQLException {
         String host, db, user, password;
-        
+        // database connection details
         host = "daneel";
         db = "n00134689";
         user = "N00134689";
