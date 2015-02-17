@@ -7,7 +7,8 @@ import java.sql.SQLException;
 public class DBConnection {
 
     private static Connection sConnection;
-
+    
+    // Implement the DB Connection class as a singleton
     public static Connection getInstance() throws ClassNotFoundException, SQLException {
         String host, db, user, password;
         
