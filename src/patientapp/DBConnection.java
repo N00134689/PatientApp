@@ -4,6 +4,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 
+// this is a description the class DBConnection
 public class DBConnection {
 
     private static Connection sConnection;
