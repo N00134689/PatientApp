@@ -9,6 +9,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class PatientTableGateway {
+     
+     private Connection mConnection;
+     
      private static final String TABLE_NAME = "patients";
      private static final String COLUMN_ID = "id";
      private static final String COLUMN_NAME = "name";
@@ -16,24 +19,74 @@ public class PatientTableGateway {
      private static final String COLUMN_MOBILE = "mobile";
      private static final String COLUMN_EMAIL = "email";
      private static final String COLUMN_BIRTHDAY = "birthday";
+     private static final String COLUMN_WARD_ID = "Ward_ID";
      
-     private Connection mConnection;
-     
-     public PatientTableGateway(Connection connection) {
+    public PatientTableGateway(Connection connection) {
          mConnection = connection;
      }
-     public List<Patient> getPatients() throws SQLException {
+     public int insertPatient(String n, String a, String m, String e, String b, int wid)throws SQLException {
+         String query;
+         PreparedStatement stmt;
+         int numRowsAffected;
+         int id = -1;
+         
+        query = "INSERT INTO " + TABLE_NAME +" (" +
+                COLUMN_NAME + ", " +
+                COLUMN_ADDRESS + ", " +
+                COLUMN_MOBILE + ", " +
+                COLUMN_EMAIL + ", " +
+                COLUMN_BIRTHDAY +
+                COLUMN_WARD_ID +
+                ")VALUES(?,?,?,?,?,?)";
+
+        stmt = mConnection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS);
+        stmt.setString(1, n);
+        stmt.setString(2, a);
+        stmt.setString(3, m);
+        stmt.setString(4, e);
+        stmt.setString(5, b);
+        if (wid == -1) {
+            stmt.setNull(6, java.sql.Types.INTEGER);
+        }
+        else {
+            stmt.setInt(6, wid);
+        }
+        
+        
+        numRowsAffected = stmt.executeUpdate();
+        if(numRowsAffected == 1){
+            ResultSet keys = stmt.getGeneratedKeys();
+            keys.next();
+            
+            id = keys.getInt(1);
+        }
+         return id;
+    }
+    
+    public boolean removePatient(int id)throws SQLException{
+         
+        PreparedStatement stmt;
+        int numRowsAffected;
+        String query;
+        query = "DELETE FROM " + TABLE_NAME +" WHERE " + COLUMN_ID + " = ?";
+
+        stmt = mConnection.prepareStatement(query);
+        stmt.setInt(1, id);
+        
+        numRowsAffected = stmt.executeUpdate();
+        
+        return (numRowsAffected ==1);
+     }
+     
+    public List<Patient> getPatients() throws SQLException {
         String query;       // the SQL query to execute
         Statement stmt;     // the java.sql.Statement object used to execute the
-                            // SQL query
         ResultSet rs;       // the java.sql.ResultSet representing the result of
-                            // SQL query 
         List<Patient> patients;   // the java.util.List containing the Patient objects
                             // created for each row in the result of the query
-        int id;             // the id of a patient
-        String name, address, email, birthday;
-        String mobile;
-        Patient b;       // a PATIENT object created from a row in the result of
+        int id, wardId;             
+        String name, address, mobile, email, birthday;
+        Patient p;       // a patient object created from a row in the result of
                             // the query
 
         // execute an SQL SELECT statement to get a java.util.ResultSet representing
@@ -53,69 +106,34 @@ public class PatientTableGateway {
             mobile = rs.getString(COLUMN_MOBILE);
             email = rs.getString(COLUMN_EMAIL);
             birthday = rs.getString(COLUMN_BIRTHDAY);
+            wardId = rs.getInt(COLUMN_WARD_ID);
+            if (rs.wasNull()){
+                wardId = -1;
+            }
             
-            b = new Patient(id, name, address, mobile, email, birthday);
-            patients.add(b);
+            p = new Patient(id, name, address, mobile, email, birthday, wardId);
+            patients.add(p);
         }
 
         return patients;
     }
-     public boolean removePatient(int id)throws SQLException{
-         
-        PreparedStatement stmt;
-        int numRowsAffected;
-        String query;
-        query = "DELETE FROM " + TABLE_NAME +" WHERE " + COLUMN_ID + " = ?";
+     
 
-        stmt = mConnection.prepareStatement(query);
-        stmt.setInt(1, id);
-        
-        numRowsAffected = stmt.executeUpdate();
-        
-        return (numRowsAffected ==1);
-     }
-     public int insertPatient(String name, String address, String mobile, String email, String birthday)throws SQLException {
-        int id = -1;
-        PreparedStatement stmt;
-        int numRowsAffected;
-        String query;
-        query = "INSERT INTO " + TABLE_NAME +" (" +
-                COLUMN_NAME + ", " +
-                COLUMN_ADDRESS + ", " +
-                COLUMN_MOBILE + ", " +
-                COLUMN_EMAIL + ", " +
-                COLUMN_BIRTHDAY +
-                ")VALUES(?,?,?,?,?)";
-
-        stmt = mConnection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS);
-        stmt.setString(1, name);
-        stmt.setString(2, address);
-        stmt.setString(3, mobile);
-        stmt.setString(4, email);
-        stmt.setString(5, birthday);
-        
-        
-        numRowsAffected = stmt.executeUpdate();
-        if(numRowsAffected == 1){
-            ResultSet keys = stmt.getGeneratedKeys();
-            keys.next();
-            id = keys.getInt(1);
-        }
-         return id;
-    }
-      // updatePatient function with the patient p object as a parameter
+      // update Patient function with the Patient p object as a parameter
     boolean updatePatient(Patient p)throws SQLException {
         String query;
         PreparedStatement stmt;
         int numRowsAffected;
+        int wid;
         
         query = "UPDATE " + TABLE_NAME +" SET " +
                 COLUMN_NAME            + " = ?, " +
                 COLUMN_ADDRESS         + " = ?, " +
                 COLUMN_MOBILE          + " = ?, " +
                 COLUMN_EMAIL           + " = ?, " +
-                COLUMN_BIRTHDAY        + " = ? " +
-                " WHERE " + COLUMN_ID   + " = ?";
+                COLUMN_BIRTHDAY        + " = ?, " +
+                COLUMN_WARD_ID         + " = ? " +
+                " WHERE " + COLUMN_ID  + " = ?";
         
         // PreparedStatement object to execute the query and put in the new values into the query
         stmt = mConnection.prepareStatement(query);
@@ -124,12 +142,24 @@ public class PatientTableGateway {
         stmt.setString(3, p.getMobile());
         stmt.setString(4, p.getEmail());
         stmt.setString(5, p.getBirthday());
-        stmt.setInt(6, p.getId());
-        
-        // this executes the query
+        wid = p.getWard_ID();
+        if (wid == -1) {
+            stmt.setNull(6, java.sql.Types.INTEGER);
+        }
+        else {
+            stmt.setInt(6, wid);
+        }
+        stmt.setInt(7, p.getId());
+
+        // execute the query
         numRowsAffected = stmt.executeUpdate();
-        
-        // return true if only one row is updated
+
+        // return the true if one and only one row was updated in the database
         return (numRowsAffected == 1);
+    
+     }
+
+    boolean deletePatient(int id) {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
-}
+  }

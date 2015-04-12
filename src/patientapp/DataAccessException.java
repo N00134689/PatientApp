@@ -1,4 +1,4 @@
-package patientapp;
+package patientApp;
 
 public class DataAccessException extends Exception {
     public DataAccessException(String msg) {

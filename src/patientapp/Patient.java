@@ -8,18 +8,20 @@ public class Patient {
     private String mobile;
     private String email;
     private String birthday;
+    private int Ward_ID;
     
-        public Patient(int id, String n, String a, String m, String e, String b) {
+        public Patient(int id, String n, String a, String m, String e, String b, int wid) {
     this.id = id;
     this.name = n;
     this.address = a;
     this.mobile = m;
     this.email = e;
     this.birthday = b;
+    this.Ward_ID = wid;
     
 }
-    public Patient(String n, String a, String m, String e, String b) {
-        this(-1, n, a, m, e, b);
+    public Patient(String n, String a, String m, String e, String b, int wid) {
+        this(-1, n, a, m, e, b, wid);
 
     }
     
@@ -69,6 +71,18 @@ public class Patient {
 
     public void setBirthday(String birthday) {
         this.birthday = birthday;
+    }
+    
+        public int getWard_ID(){
+        return Ward_ID;
+    }
+    
+    public void setWard_ID(int Ward_ID) {
+        this.Ward_ID = Ward_ID;
+    }
+
+    int getWardId() {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
     
 }

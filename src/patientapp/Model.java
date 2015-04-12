@@ -4,98 +4,156 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 public class Model {
 
     private static Model instance = null;
 
-    public static synchronized Model getInstance() {
+    public static Model getInstance() throws DataAccessException {
         if (instance == null) {
             instance = new Model();
         }
         return instance;
     }
 
-    private PatientTableGateway gateway;
-    private List<Patient> patients;
+    List<Patient> patients;
+    List<Ward> wards;
+    PatientTableGateway patientGateway;
+    WardTableGateway wardGateway;
 
-    private Model() {
-
+    private Model() throws DataAccessException {
         try {
             Connection conn = DBConnection.getInstance();
-            gateway = new PatientTableGateway(conn);
+            this.patientGateway = new PatientTableGateway(conn);
+            this.wardGateway = new WardTableGateway(conn);
 
-            this.patients = this.gateway.getPatients();
-        } catch (ClassNotFoundException ex) {
-            Logger.getLogger(Model.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (SQLException ex) {
-            Logger.getLogger(Model.class.getName()).log(Level.SEVERE, null, ex);
+            this.patients = this.patientGateway.getPatients();
+            this.wards = this.wardGateway.getWards();
+        }
+        catch (ClassNotFoundException | SQLException ex) {
+            throw new DataAccessException("Exception initialising Model object: " + ex.getMessage());
         }
     }
 
-    public List<Patient> getPatients() {
-        return new ArrayList<Patient>(this.patients);
-    }
-
-    public boolean addPatient(Patient p) throws SQLException {
+    public boolean addPatient(Patient p) throws DataAccessException {
         boolean result = false;
-        int id = this.gateway.insertPatient(
-                p.getName(),
-                p.getAddress(),
-                p.getMobile(),
-                p.getEmail(),
-                p.getBirthday());
-        
-        if (id != -1) {
-            p.setId(id);
-            this.patients.add(p);
-            result = true;
+        try {
+            int id = this.patientGateway.insertPatient(
+                    p.getName(), p.getAddress(), p.getMobile(),
+                    p.getEmail(), p.getBirthday(), p.getWardId()
+            );
+            if (id != -1) {
+                p.setId(id);
+                this.patients.add(p);
+                result = true;
+            }
+        }
+        catch (SQLException ex) {
+            throw new DataAccessException("Exception adding patient: " + ex.getMessage());
         }
         return result;
     }
 
-    public boolean removePatient(Patient p) {
+    public boolean removePatient(Patient p) throws DataAccessException {
         boolean removed = false;
-        try {
-            removed = this.gateway.removePatient(p.getId());
-            if (removed) {
-                removed = this.patients.remove(p);
-            }
-        } catch (SQLException ex) {
-            Logger.getLogger(Model.class.getName()).log(Level.SEVERE, null, ex);
+
+        removed = this.patientGateway.deletePatient(p.getId());
+        if (removed) {
+            removed = this.patients.remove(p);
         }
+
         return removed;
     }
 
-    public Patient findPatientByName(String name) {
-        Patient b = null;
+    public List<Patient> getPatients() {
+        return this.patients;
+    }
+
+    public List<Patient> getPatientsByWardId(int wardId) {
+        List<Patient> list = new ArrayList<>();
+        this.patients.stream().filter((p) -> (p.getWardId() == wardId)).forEach((p) -> {
+            list.add(p);
+        });
+        return list;
+    }
+
+    boolean updatePatient(Patient p) throws DataAccessException {
+        boolean updated = false;
+
+        try {
+            updated = this.patientGateway.updatePatient(p);
+        }
+        catch (SQLException ex) {
+            throw new DataAccessException("Exception updating patient: " + ex.getMessage());
+        }
+
+        return updated;
+    }
+
+    public boolean addWard(Ward w) throws DataAccessException {
+        boolean result = false;
+        try {
+            int id = this.wardGateway.insertWard(w.getName(), w.getNumBeds(), w.getNurse());
+            if (id != -1) {
+                w.setId(id);
+                this.wards.add(w);
+                result = true;
+            }
+        }
+        catch (SQLException ex) {
+            throw new DataAccessException("Exception adding ward: " + ex.getMessage());
+        }
+        return result;
+    }
+
+    public boolean removeWard(Ward w) throws DataAccessException {
+        boolean removed = false;
+
+        try {
+            removed = this.wardGateway.deleteWard(w.getId());
+            if (removed) {
+                removed = this.wards.remove(w);
+            }
+        }
+        catch (SQLException ex) {
+            throw new DataAccessException("Exception removing ward: " + ex.getMessage());
+        }
+
+        return removed;
+    }
+
+    public List<Ward> getWards() {
+        return this.wards;
+    }
+
+    Ward findWardById(int id) {
+        Ward w = null;
         int i = 0;
         boolean found = false;
-        while (i < this.patients.size() && !found) {
-            b = this.patients.get(i);
-            if (b.getName().equals(name)) {
+        while (i < this.wards.size() && !found) {
+            w = this.wards.get(i);
+            if (w.getId() == id) {
                 found = true;
             } else {
                 i++;
             }
         }
         if (!found) {
-            b = null;
+            w = null;
         }
-        return b;
-    }
-    
-     boolean updatePatient(Patient p) {
-        boolean updated = false;
-        try{
-            updated = this.gateway.updatePatient(p);
-        }
-         catch (SQLException ex) {
-            Logger.getLogger(Model.class.getName()).log(Level.SEVERE, null, ex);
-        }
-        return updated;
+        return w;
     }
 
+    boolean updateWard(Ward w) throws DataAccessException {
+        boolean updated = false;
+
+        try {
+            updated = this.wardGateway.updateWard(w);
+        }
+        catch (SQLException ex) {
+            throw new DataAccessException("Exception updating ward: " + ex.getMessage());
+        }
+
+        return updated;
+    }
 }
